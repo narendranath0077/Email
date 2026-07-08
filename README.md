@@ -1,4 +1,4 @@
-# BSS AI Email Generator
+# AI Email Generator
 
 A polished AI-powered email assistant for creating recruiter-ready outreach messages. The app generates, previews, copies, and refines email drafts through a lightweight frontend and a FastAPI backend powered by Groq and LangGraph.
 
