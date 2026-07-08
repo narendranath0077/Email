@@ -54,6 +54,7 @@
       textarea, input, select { width: 100%; padding: 0.85rem 0.95rem; border-radius: 14px; border: 1px solid rgba(255,255,255,0.16); background: rgba(2,6,23,0.36); color: var(--text); margin-bottom: 0.9rem; }
       .result { margin-top: 1rem; padding: 1rem; border-radius: 16px; background: rgba(2,6,23,0.45); white-space: pre-wrap; min-height: 280px; font-size: 0.95rem; line-height: 1.7; }
       .mail-preview { border: 1px solid rgba(255,255,255,0.14); border-radius: 18px; padding: 1rem; background: rgba(248,250,252,0.96); color: #0f172a; min-height: 320px; }
+      .refine-panel { margin-top: 1rem; padding: 0.95rem; border-radius: 16px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); }
       .mail-preview .meta { color: #475569; font-size: 0.9rem; margin-bottom: 0.9rem; }
       .mail-preview .subject { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem; }
       .mail-preview .body { white-space: pre-wrap; line-height: 1.75; }
@@ -99,6 +100,11 @@
             <button class="btn" onclick="generateEmail()">Generate email</button>
             <button class="btn ghost" onclick="copyResult()" id="copyBtn" disabled>Copy to clipboard</button>
           </div>
+          <div class="refine-panel">
+            <label for="refinePrompt">Refine the generated email</label>
+            <textarea id="refinePrompt" rows="3" placeholder="e.g. Make it warmer, shorter, or more formal"></textarea>
+            <button class="btn secondary" onclick="refineEmail()">Refine email</button>
+          </div>
           <div class="result" id="result">Your polished email will appear here.</div>
         </div>
       </section>
@@ -107,6 +113,7 @@
       let generatedText = '';
       let lastSubject = '';
       let lastBody = '';
+      let lastEmailId = null;
 
       function getApiUrl(path) {
         const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
@@ -135,6 +142,7 @@
         generatedText = '';
         lastSubject = '';
         lastBody = '';
+        lastEmailId = null;
         renderPreview('', '');
         updateCopyState();
         const payload = {
@@ -158,6 +166,7 @@
           }
           lastSubject = data.subject;
           lastBody = data.body;
+          lastEmailId = data.id;
           generatedText = `Subject: ${data.subject}\n\n${data.body}`;
           result.innerHTML = `<strong>Subject:</strong> ${data.subject}<br><br>${data.body.replace(/\n/g, '<br>')}`;
           renderPreview(data.subject, data.body);
@@ -180,6 +189,43 @@
           }, 1200);
         } catch (error) {
           alert('Clipboard access was blocked. Please copy the text manually.');
+        }
+      }
+
+      async function refineEmail() {
+        if (!lastEmailId) {
+          alert('Generate an email first so there is something to refine.');
+          return;
+        }
+        const prompt = document.getElementById('refinePrompt').value.trim();
+        if (!prompt) {
+          alert('Please enter a refinement instruction first.');
+          return;
+        }
+
+        const result = document.getElementById('result');
+        result.textContent = 'Refining...';
+        try {
+          const response = await fetch(getApiUrl('/api/refine'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email_id: lastEmailId,
+              refinement_instruction: prompt,
+            }),
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail || 'Refinement failed');
+          }
+          lastSubject = data.subject;
+          lastBody = data.body;
+          lastEmailId = data.id;
+          generatedText = `Subject: ${data.subject}\n\n${data.body}`;
+          result.innerHTML = `<strong>Subject:</strong> ${data.subject}<br><br>${data.body.replace(/\n/g, '<br>')}`;
+          renderPreview(data.subject, data.body);
+        } catch (error) {
+          result.textContent = error.message || 'Something went wrong.';
         }
       }
 
