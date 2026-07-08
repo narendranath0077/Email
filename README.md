@@ -1,30 +1,29 @@
 # BSS AI Email Generator
 
-A polished AI-powered email assistant for creating recruiter-ready outreach messages. The app generates, previews, copies, and refines email drafts through a lightweight frontend and a FastAPI backend powered by Groq and LangGraph.
+A polished AI-powered email assistant for creating recruiter-ready outreach messages. The repo keeps the existing FastAPI backend for local development, and now also includes Netlify-native serverless functions so the app can be deployed on Netlify as a single project.
 
 ## Features
 
 - Generate emails from a purpose, recipient, tone, length, and key points
 - Preview the result in an email-style layout before copying it
 - Refine an existing draft with a plain-language instruction
-- Store generated emails locally in SQLite for lightweight history tracking
-- Deploy the frontend and API together through Vercel
+- Run locally with FastAPI, or deploy the frontend plus API on Netlify
 
-## Tech stack
+## Project layout
 
-- Frontend: static HTML, CSS, and JavaScript
-- Backend: FastAPI, Pydantic, SQLAlchemy
-- AI orchestration: LangChain and LangGraph with Groq
-- Deployment: Vercel-compatible Python entrypoint and static frontend routing
+- `bss-email-generator/frontend`: static UI served locally or by Netlify
+- `bss-email-generator/backend`: existing FastAPI backend for local development
+- `netlify/functions`: Netlify serverless API endpoints for deployed use
+- `netlify.toml`: Netlify publish directory and routing config
 
 ## Local development
 
 1. Create and activate a Python virtual environment.
 2. Install dependencies:
    ```bash
-   pip install -r requirements.txt
+   pip install -r bss-email-generator/requirements.txt
    ```
-3. Create a `.env` file with at least:
+3. Create `bss-email-generator/.env` with at least:
    ```env
    GROQ_API_KEY=your_groq_api_key
    ```
@@ -32,23 +31,33 @@ A polished AI-powered email assistant for creating recruiter-ready outreach mess
    ```bash
    uvicorn backend.main:app --reload --host 127.0.0.1 --port 8002
    ```
-5. Serve the frontend from the `frontend` directory:
+   Run this from the `bss-email-generator` directory.
+5. Serve the frontend:
    ```bash
    cd frontend
    python -m http.server 8001
    ```
-6. Open http://127.0.0.1:8001/ in your browser.
+6. Open `http://127.0.0.1:8001/`.
 
-## Environment variables
+## Netlify deployment
 
-- `GROQ_API_KEY`: required for AI email generation
-- `GROQ_MODEL`: optional override for the Groq model
-- `DATABASE_URL`: optional database location; defaults to a local SQLite file
-- `ALLOWED_ORIGINS`: optional comma-separated list of allowed frontend origins
-- `RATE_LIMIT`: optional request rate limit for the API
+1. Push this repo to GitHub.
+2. In Netlify, create a new site from that repo.
+3. Keep the base directory empty so Netlify uses the repo root.
+4. Netlify will pick up `netlify.toml` and use:
+   - publish directory: `bss-email-generator/frontend`
+   - functions directory: `netlify/functions`
+5. Add these environment variables in Netlify:
+   - `GROQ_API_KEY` required
+   - `GROQ_MODEL` optional
+6. Deploy.
 
-## Deployment
+After deploy:
 
-The repository includes Vercel configuration in `vercel.json` and a Python entrypoint in `api/index.py` so the frontend and API can be served from a single deployment.
+- `/` serves the frontend
+- `/api/generate` runs the Netlify function
+- `/api/refine` runs the Netlify function
 
-When deploying, configure the same environment variables above in the Vercel project settings.
+## Important note
+
+The Netlify deployment path does not use the FastAPI SQLite history flow. Refinement on Netlify works from the current email content in the browser, which is enough for the shipped UI. If you want persistent history, keep using the Python backend locally or move storage to a hosted database.
