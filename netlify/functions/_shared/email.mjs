@@ -47,32 +47,32 @@ const LENGTH_GUIDE = {
   Detailed: "9-14 lines. Full context, all key points given, but still tightly written - detailed does not mean padded.",
 };
 
-function jsonResponse(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "content-type": "application/json",
-      "access-control-allow-origin": "*",
-      "access-control-allow-headers": "content-type",
-      "access-control-allow-methods": "POST, OPTIONS",
-    },
-  });
+const CORS_HEADERS = {
+  "content-type": "application/json",
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "content-type",
+  "access-control-allow-methods": "POST, OPTIONS",
+};
+
+export function jsonResponse(body, status = 200) {
+  return {
+    statusCode: status,
+    headers: CORS_HEADERS,
+    body: JSON.stringify(body),
+  };
 }
 
 export function handleOptions() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      "access-control-allow-origin": "*",
-      "access-control-allow-headers": "content-type",
-      "access-control-allow-methods": "POST, OPTIONS",
-    },
-  });
+  return {
+    statusCode: 204,
+    headers: CORS_HEADERS,
+    body: "",
+  };
 }
 
-export async function readJson(req) {
+export async function readJson(body) {
   try {
-    return await req.json();
+    return JSON.parse(body || "{}");
   } catch {
     throw new Error("Please send valid JSON in the request body.");
   }
@@ -135,8 +135,7 @@ function extractJson(raw) {
     return text;
   }
 
-  const stripped = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
-  return stripped;
+  return text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
 }
 
 function parseEmail(raw) {
@@ -152,8 +151,8 @@ function parseEmail(raw) {
   return null;
 }
 
-async function groqChat(messages, env) {
-  const apiKey = env.get("GROQ_API_KEY");
+async function groqChat(messages) {
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     throw new Error("GROQ_API_KEY is not set in Netlify environment variables.");
   }
@@ -170,7 +169,7 @@ async function groqChat(messages, env) {
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: env.get("GROQ_MODEL") || "llama-3.3-70b-versatile",
+        model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
         temperature: 0.7,
         messages,
       }),
@@ -188,24 +187,21 @@ async function groqChat(messages, env) {
   }
 }
 
-export async function generateEmail(prompt, env) {
+export async function generateEmail(prompt) {
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
     { role: "user", content: prompt },
   ];
 
-  let raw = await groqChat(messages, env);
+  let raw = await groqChat(messages);
   let parsed = parseEmail(raw);
 
   if (!parsed) {
-    raw = await groqChat(
-      [
-        ...messages,
-        { role: "assistant", content: raw },
-        { role: "user", content: REPAIR_INSTRUCTION },
-      ],
-      env,
-    );
+    raw = await groqChat([
+      ...messages,
+      { role: "assistant", content: raw },
+      { role: "user", content: REPAIR_INSTRUCTION },
+    ]);
     parsed = parseEmail(raw);
   }
 
@@ -222,5 +218,3 @@ export async function generateEmail(prompt, env) {
 export function nextId() {
   return Date.now();
 }
-
-export { jsonResponse };
