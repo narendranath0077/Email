@@ -1,0 +1,26 @@
+# Environment and secrets
+.env
+.venv/
+venv/
+.streamlit/secrets.toml
+
+# Python caches and test output
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local app data
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# Local scratch files
+tmp_*.py
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
