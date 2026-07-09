@@ -68,7 +68,7 @@
         <div class="card">
           <div class="pill">AI-powered outreach, polished in seconds</div>
           <h1>Write recruiter-ready emails effortlessly.</h1>
-          <p>Create polished outreach messages with purpose, tone, and structure — all from a beautifully simple interface.</p>
+          <p>Create polished outreach messages with purpose, tone, and structure - all from a beautifully simple interface.</p>
           <div class="helper">The preview on the right mirrors how the final email will look, so you can review tone, structure, and polish before copying it.</div>
           <div class="mail-preview" id="mailPreview">
             <div class="meta">To: <span id="previewRecipient">Alex</span></div>
@@ -116,9 +116,16 @@
       let lastEmailId = null;
 
       function getApiUrl(path) {
-        const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        const isLocal = window.location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(window.location.hostname);
         const base = isLocal ? 'http://127.0.0.1:8002' : '';
         return `${base}${path}`;
+      }
+
+      function getFriendlyError(error) {
+        if (error instanceof TypeError && error.message === 'Failed to fetch') {
+          return 'Backend is not running. Start it with: uvicorn backend.main:app --host 127.0.0.1 --port 8002';
+        }
+        return error.message || 'Something went wrong.';
       }
 
       function updateCopyState() {
@@ -172,7 +179,7 @@
           renderPreview(data.subject, data.body);
         } catch (error) {
           generatedText = '';
-          result.textContent = error.message || 'Something went wrong.';
+          result.textContent = getFriendlyError(error);
         } finally {
           updateCopyState();
         }
@@ -193,7 +200,7 @@
       }
 
       async function refineEmail() {
-        if (!lastEmailId) {
+        if (!lastBody) {
           alert('Generate an email first so there is something to refine.');
           return;
         }
@@ -211,6 +218,10 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               email_id: lastEmailId,
+              current_subject: lastSubject,
+              current_body: lastBody,
+              tone: document.getElementById('tone').value,
+              length: document.getElementById('length').value,
               refinement_instruction: prompt,
             }),
           });
@@ -225,7 +236,7 @@
           result.innerHTML = `<strong>Subject:</strong> ${data.subject}<br><br>${data.body.replace(/\n/g, '<br>')}`;
           renderPreview(data.subject, data.body);
         } catch (error) {
-          result.textContent = error.message || 'Something went wrong.';
+          result.textContent = getFriendlyError(error);
         }
       }
 
@@ -236,3 +247,6 @@
     </script>
   </body>
 </html>
+
+
+
