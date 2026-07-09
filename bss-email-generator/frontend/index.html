@@ -116,9 +116,16 @@
       let lastEmailId = null;
 
       function getApiUrl(path) {
-        const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        const isLocal = window.location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(window.location.hostname);
         const base = isLocal ? 'http://127.0.0.1:8002' : '';
         return `${base}${path}`;
+      }
+
+      function getFriendlyError(error) {
+        if (error instanceof TypeError && error.message === 'Failed to fetch') {
+          return 'Backend is not running. Start it with: uvicorn backend.main:app --host 127.0.0.1 --port 8002';
+        }
+        return error.message || 'Something went wrong.';
       }
 
       function updateCopyState() {
@@ -172,7 +179,7 @@
           renderPreview(data.subject, data.body);
         } catch (error) {
           generatedText = '';
-          result.textContent = error.message || 'Something went wrong.';
+          result.textContent = getFriendlyError(error);
         } finally {
           updateCopyState();
         }
@@ -229,7 +236,7 @@
           result.innerHTML = `<strong>Subject:</strong> ${data.subject}<br><br>${data.body.replace(/\n/g, '<br>')}`;
           renderPreview(data.subject, data.body);
         } catch (error) {
-          result.textContent = error.message || 'Something went wrong.';
+          result.textContent = getFriendlyError(error);
         }
       }
 

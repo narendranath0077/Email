@@ -1,8 +1,45 @@
-.venv/
-.pytest_cache/
+# --- Python / FastAPI ---
 __pycache__/
 *.py[cod]
-Thumbs.db
-.DS_Store
-.venv311/
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+
+# Virtual environments
+.venv/
+.venv*/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+
+# Logs
 *.log
+
+# --- App runtime artifacts ---
+# SQLite DBs and other local state
+*.db
+*.sqlite
+
+# Local environment files (Netlify should provide env vars)
+.env
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+
+# Node / frontend build artifacts (if any are added later)
+node_modules/
+dist/
+build/
+.out/
+
+# --- Netlify / function build output ---
+/.netlify/
+
+# --- Misc ---
+.DS_Store?
+

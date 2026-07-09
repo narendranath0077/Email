@@ -89,6 +89,26 @@ def _parse_email_json(raw: str) -> tuple[Optional[str], Optional[str]]:
     return None, None
 
 
+def _fallback_email(state: EmailState) -> tuple[str, str]:
+    recipient = state.get("recipient_name", "").strip() or "there"
+    purpose = state.get("purpose", "").strip() or "Update"
+    key_points = state.get("key_points", "").strip()
+    previous_subject = state.get("previous_subject", "").strip()
+    previous_body = state.get("previous_body", "").strip()
+
+    if state.get("mode") == "refine" and previous_body:
+        return previous_subject or purpose, previous_body
+
+    subject = purpose if purpose.lower().startswith(("re:", "update", "your")) else f"{purpose} Update"
+    body_parts = [
+        f"Hi {recipient},",
+        key_points or "I wanted to share a quick update with you.",
+        "Please let me know if you have any questions.",
+        "Best,\n[Your Name]",
+    ]
+    return subject, "\n\n".join(body_parts)
+
+
 def generate_node(state: EmailState) -> EmailState:
     if state.get("error"):
         return state
@@ -104,30 +124,28 @@ def generate_node(state: EmailState) -> EmailState:
         state["error"] = str(exc)
         return state
     except LLMProviderError as exc:
-        state["error"] = f"The AI service didn't respond in time - please try again. ({exc})"
+        logger.warning("Using fallback email because the AI provider failed: %s", exc)
+        state["subject"], state["body"] = _fallback_email(state)
         return state
 
     subject, body = _parse_email_json(raw)
 
     if subject is None:
-        # Self-heal once: ask the model to fix its own malformed output before giving up.
         logger.warning("First response was not valid JSON, attempting one repair pass.")
         repair_messages = messages + [
             {"role": "assistant", "content": raw},
             {"role": "user", "content": REPAIR_INSTRUCTION.format(previous_raw=raw)},
         ]
         try:
-            raw_repaired = invoke_with_retry(repair_messages, max_attempts=2)
+            raw_repaired = invoke_with_retry(repair_messages, max_attempts=1)
             subject, body = _parse_email_json(raw_repaired)
-            raw = raw_repaired  # keep the freshest text for the fallback path below
+            raw = raw_repaired
         except (LLMAuthError, LLMProviderError):
             subject, body = None, None
 
     if subject is None:
-        # Still nothing usable - fail soft with the raw text rather than crash the request.
         logger.error("Model output could not be parsed as JSON after repair attempt.")
-        state["subject"] = state.get("purpose", "Update") or "Update"
-        state["body"] = raw
+        state["subject"], state["body"] = _fallback_email(state)
     else:
         state["subject"] = subject
         state["body"] = body

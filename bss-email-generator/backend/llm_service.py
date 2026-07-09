@@ -6,6 +6,7 @@ model) to one file, and gives retry/error-handling one home.
 import logging
 import time
 
+import httpx
 from langchain_groq import ChatGroq
 
 from backend.config import settings
@@ -39,15 +40,17 @@ def _get_llm() -> ChatGroq:
             api_key=settings.GROQ_API_KEY,
             model=settings.GROQ_MODEL,
             temperature=0.7,
-            timeout=20,
+            timeout=15,
+            max_retries=1,
+            http_client=httpx.Client(trust_env=False),
         )
     return _llm_instance
 
 
-def invoke_with_retry(messages: list[dict], max_attempts: int = 3) -> str:
+def invoke_with_retry(messages: list[dict], max_attempts: int = 2) -> str:
     """
-    Calls the model with exponential backoff (1s, 2s, 4s...) on transient
-    failures. Auth errors fail immediately - retrying a bad API key wastes
+    Calls the model with a short retry path if the provider is unreachable.
+    Auth errors fail immediately - retrying a bad API key wastes
     time and hides the real problem from the user.
     Returns the raw text content of the model's reply.
     """
